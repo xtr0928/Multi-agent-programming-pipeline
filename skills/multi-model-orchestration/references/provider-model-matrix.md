@@ -6,7 +6,7 @@ Known-good combinations discovered and validated through direct API testing.
 
 | Model | Context | Tested | Notes |
 |---|---|---|---|
-| `glm-5.2` | 1,048,576 | ✅ | Latest, 1M context |
+| `glm-5.3` | 1,048,576 | ✅ | Latest, 1M context |
 | `glm-4-plus` | ~128K | ✅ | General purpose |
 | `glm-4-flash` | ~128K | ✅ | Fast/cheap |
 
@@ -40,7 +40,7 @@ Kimi coding API supports `reasoning_content` in responses (thinking chain).
 | Model | Context | Notes |
 |---|---|---|
 | `deepseek-v4-pro` | — | Primary model |
-| `deepseek-v4-flash` | — | Faster variant |
+| `deepseek-v4-pro` | — | Faster variant |
 
 Provider internal name: `deepseek`
 Default base URL: `https://api.deepseek.com/v1`
