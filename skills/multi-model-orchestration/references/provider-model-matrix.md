@@ -27,13 +27,19 @@ Key format: `17cac...XXXX.MShY...` (32 hex + dot + 16 alphanum)
 | `kimi-for-coding` | ✅ | Coding-optimized |
 
 Provider internal name: `kimi`
-Default base URL (sk-kimi- keys): `https://api.kimi.com/coding/v1`
-Default base URL (moonshot keys): `https://api.moonshot.ai/v1`
-API key env var: `KIMI_API_KEY`
 
-Key format: `sk-kimi-...` (72 chars total for kimi.com keys)
+### Qwen3.8-Max / Alibaba DashScope
 
-Kimi coding API supports `reasoning_content` in responses (thinking chain).
+| Model | Status | Notes |
+|---|---|---|
+| `qwen3.8-max` | ✅ | 2.4T MoE flagship (2026-08-14), programming/long-horizon autonomous coding |
+| `qwen-max` | ✅ | Alias (latest max) |
+| `qwen3-max` | ✅ | Alias |
+
+Provider internal name: `qwen`
+Default base URL: `https://dashscope.aliyuncs.com/compatible-mode/v1` (OpenAI-compatible)
+Key: `QWEN_API_KEY` (sk-...)
+Role in Multi-Agent pipeline: **coder-executor** — T3 long-horizon coding tasks (complex module from scratch, multi-file projects). Gate: compile/test/reproducibility before glm-review. Admission test required (API reachability / quality A-B vs DeepSeek / cost) before formal T3 routing.
 
 ## DeepSeek
 
