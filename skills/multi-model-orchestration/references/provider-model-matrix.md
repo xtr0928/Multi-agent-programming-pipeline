@@ -39,7 +39,7 @@ Provider internal name: `kimi`
 Provider internal name: `qwen`
 Default base URL: `https://dashscope.aliyuncs.com/compatible-mode/v1` (OpenAI-compatible)
 Key: `QWEN_API_KEY` (sk-...)
-Role in Multi-Agent pipeline: **coder-executor** — T3 long-horizon coding tasks (complex module from scratch, multi-file projects). Gate: compile/test/reproducibility before glm-review. Admission test required (API reachability / quality A-B vs DeepSeek / cost) before formal T3 routing.
+Role in Multi-Agent pipeline: **coder-executor** (T3 long-horizon coding) + **vision reviewer / UI design** (visual review, OCR, page-render checks — replaces Kimi vision since 2026-08-14, config: auxiliary.vision provider=custom model=qwen3.8-max base_url=dashscope compatible-mode) — T3 long-horizon coding tasks (complex module from scratch, multi-file projects). Gate: compile/test/reproducibility before glm-review. Admission test required (API reachability / quality A-B vs DeepSeek / cost) before formal T3 routing.
 
 ## DeepSeek
 
