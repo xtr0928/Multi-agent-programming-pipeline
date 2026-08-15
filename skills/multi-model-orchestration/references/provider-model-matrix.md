@@ -20,11 +20,14 @@ Key format: `17cac...XXXX.MShY...` (32 hex + dot + 16 alphanum)
 
 | Model | Tested | Notes |
 |---|---|---|
-| `kimi-k2.7-coder` | ✅ | Latest coder model |
-| `kimi-k2.7` | ✅ | Latest general model |
+| `kimi-k2.7-code` | ✅ 2026-08-15 实测 | 推理型 coder（coding pipeline Phase 2 位）；reasoning_content 消耗 max_tokens，编码需 ≥8K 预算 |
+| `kimi-k2.7-code-highspeed` | — | 高速变体（models 列表可见，未实测） |
+| `kimi-k3` | ✅ | 通用旗舰（原视觉审查位，2026-08-14 起视觉退役，仅推理审查） |
 | `kimi-k2.6` | ✅ | Previous gen, **supports vision/image input** (confirmed via multimodal API test) |
 | `kimi-k2.5` | ✅ | Stable |
-| `kimi-for-coding` | ✅ | Coding-optimized |
+
+> ⚠️ 旧文档曾写 `kimi-k2.7-coder` / `kimi-k2.7`——`/models` 端点实测不存在（404）。
+> 正确 ID 以 `/v1/models` 返回为准。Kimi 系列仅允许 `temperature=1`。
 
 Provider internal name: `kimi`
 

@@ -8,29 +8,30 @@
 ## 仓库结构
 
 ```
+pipeline/
+  coding_pipeline.py                  # 可执行管线：DS 理解需求 → GLM 设计 ∥ Qwen 视觉UI → Kimi 编码 → 并行审查 → DS 集成
+  llm_client.py                       # 四模型统一接口（含 Qwen 图像输入）
+  README.md                           # 管线用法
 skills/
   multi-model-orchestration/          # 核心：任务分级路由 + 门禁 + 评审编排
     SKILL.md                          # 多模型编排模式与实操流程
     references/provider-model-matrix.md  # 各 provider 实测矩阵（模型/上下文/key 格式）
   hermes-model-management/            # 配套：API key 验证/连接调试
 docs/
+  coding_pipeline_flow.png/.html      # 四模型分工流程图（回归原始架构，视觉位=Qwen）
   qwen_coding_arch.png                # Qwen 接入编码管线架构图（纸墨风）
 ```
 
-## 管线结构
+## 协同编码管线（原始四模型分工）
 
 ```
-编码需求
-  → DeepSeek 编排·任务分级路由
-      T1 快速修复 <30min  → kimi-coder (K2.7)
-      T2 标准模块 0.5–2h  → kimi-coder (K2.7)
-      T3 复杂/长时程 >2h  → qwen-coder (Qwen3.8-Max)
-  → 确定性验收门禁（编译/测试/可复现/provenance，不认模型）
-  → GLM 5.2 架构评审
-  → 收敛判定：失败 ≤2 次 → DeepSeek 接管（旧进程不杀并行对照）
+DeepSeek V4 Pro  理解需求 · 编排调度 · 汇总修复 · 集成验证
+GLM 5.2          设计整体情况（架构分析）+ 代码审查
+Kimi K2.7 Code   编写具体代码（逐文件）
+Qwen3.8-Max      视觉与 UI 设计 + 视觉产出审查（原 Kimi K3 视觉位，成本指令）
 ```
 
-视觉/UI/OCR（vision_analyze、渲染检查、页面验收）= Qwen3.8-Max 视觉官（K3 视觉已退役）。
+可执行实现见 `pipeline/`（`python3 pipeline/coding_pipeline.py --project-dir ... --requirement ...`）。
 
 ## 版本时间线（git tag）
 
