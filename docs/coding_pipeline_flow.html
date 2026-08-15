@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>协同编码架构 — 四模型分工流程图</title>
+<style>
+:root {
+  --paper: #faf8f3;
+  --paper-deep: #f2efe6;
+  --ink: #1c1a16;
+  --ink-soft: #4a463e;
+  --ink-mute: #8a8578;
+  --hairline: #e3dfd2;
+  --accent: #a63a2a;
+  --c-analyze: #b3562e;
+  --c-code: #2f6b5e;
+  --c-write: #3a5a8c;
+  --c-manage: #6b4a8c;
+  --c-data: #8a8578;
+  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", "Consolas", monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 32px 80px; }
+
+header { padding: 56px 0 36px; border-bottom: 3px solid var(--ink); margin-bottom: 28px; }
+h1 { font-family: var(--serif); font-weight: 900; font-size: 31px; letter-spacing: .02em; }
+h1 em { font-style: normal; color: var(--accent); }
+.sub { color: var(--ink-mute); font-size: 13.5px; margin-top: 10px; font-family: var(--mono); letter-spacing: .03em; line-height: 1.8; }
+.sub b { color: var(--ink-soft); font-weight: 500; }
+
+.legend {
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+  padding: 14px 22px; background: var(--paper-deep);
+  border: 1px solid var(--hairline); margin-bottom: 36px;
+  font-size: 12.5px; color: var(--ink-soft);
+}
+.legend .lg { display: flex; align-items: center; gap: 7px; }
+.legend .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.legend b { color: var(--ink); font-weight: 600; }
+
+/* ===== 流程 ===== */
+.flow { display: flex; flex-direction: column; align-items: stretch; }
+.node {
+  background: #fff; border: 1px solid var(--hairline);
+  padding: 15px 20px; position: relative;
+  display: flex; gap: 16px; align-items: flex-start;
+}
+.node::before { content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 4px; }
+.node.t-manage::before { background: var(--c-manage); }
+.node.t-analyze::before { background: var(--c-analyze); }
+.node.t-code::before { background: var(--c-code); }
+.node.t-write::before { background: var(--c-write); }
+.node.t-data::before { background: var(--c-data); }
+.node.center { max-width: 620px; margin: 0 auto; width: 100%; }
+.node .n-num { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: .1em; min-width: 78px; padding-top: 1px; }
+.node .n-body { flex: 1; }
+.node-name { font-family: var(--serif); font-weight: 700; font-size: 15.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.node-type { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; padding: 2px 6px; border: 1px solid var(--hairline); color: var(--ink-mute); }
+.node-role { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+.node-io { font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); line-height: 1.6; margin-top: 4px; }
+.node-io b { color: var(--c-data); font-weight: 500; }
+.src-line { font-family: var(--mono); font-size: 9.5px; color: var(--accent); margin-top: 3px; }
+
+.conn { display: flex; justify-content: center; color: var(--accent); font-family: var(--mono); font-size: 15px; letter-spacing: .25em; padding: 10px 0 6px; }
+.fork-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fork-label { text-align: center; font-family: var(--mono); font-size: 10px; color: var(--ink-mute); letter-spacing: .12em; padding: 2px 0 10px; }
+.join-label { text-align: center; font-family: var(--mono); font-size: 10px; color: var(--ink-mute); letter-spacing: .12em; padding: 8px 0 4px; }
+
+/* ===== 路由表 ===== */
+.table-block { margin-top: 44px; }
+.table-title { font-family: var(--serif); font-weight: 700; font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+.table-title::before { content: ""; width: 4px; height: 18px; background: var(--accent); display: inline-block; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
+th { font-family: var(--serif); font-size: 13px; padding: 10px 14px; text-align: left; background: var(--paper-deep); border: 1px solid var(--hairline); }
+td { padding: 9px 14px; border: 1px solid var(--hairline); color: var(--ink-soft); }
+td:first-child { font-family: var(--mono); font-size: 11.5px; color: var(--ink); }
+.ok { color: var(--c-code); }
+.no { color: var(--ink-mute); }
+
+.footer-note {
+  margin-top: 44px; padding: 26px 28px;
+  background: var(--ink); color: #b9b4a6; font-size: 13px;
+}
+.footer-note h3 { font-family: var(--serif); color: var(--paper); font-size: 16px; margin-bottom: 12px; }
+.footer-note table { background: transparent; }
+.footer-note td { padding: 7px 10px; border: none; border-bottom: 1px solid rgba(255,255,255,.08); }
+.footer-note td:first-child { font-family: var(--mono); color: var(--paper); white-space: nowrap; width: 175px; border: none; }
+.footer-note .warn { color: #e8c07a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>协同编码架构 <em>四模型分工流程图</em></h1>
+  <div class="sub"><b>回归原始设计 · 2026-08-15 · 视觉位已由 Kimi K3 换为千问（成本指令）</b><br>
+  源头：Multi-Agent 仓库 multi-agent-pipeline SKILL（默认协同架构） · 无门禁、无阶梯、无仲裁——原始四阶段流水线</div>
+</header>
+
+<div class="legend">
+  <div class="lg"><span class="dot" style="background:var(--c-manage)"></span><b>DeepSeek 编排</b></div>
+  <div class="lg"><span class="dot" style="background:var(--c-analyze)"></span><b>GLM 设计/审查</b></div>
+  <div class="lg"><span class="dot" style="background:var(--c-code)"></span><b>Kimi coder 编码</b></div>
+  <div class="lg"><span class="dot" style="background:var(--c-write)"></span><b>Qwen 视觉/UI</b></div>
+  <div class="lg"><span class="dot" style="background:var(--c-data)"></span><b>输入/交付</b></div>
+  <div class="lg"><span style="font-family:var(--mono);font-size:10px;border:1.5px solid var(--c-write);padding:1px 7px;">视觉位</span><b>原 Kimi K3 → 现 Qwen3.8-Max</b></div>
+</div>
+
+<div class="flow">
+
+  <div class="node t-data center">
+    <div class="n-num">INPUT</div>
+    <div class="n-body">
+      <div class="node-name">需求输入</div>
+      <div class="node-io">用户需求（模糊需求先澄清再动手——原始 skill 优先级 #0）</div>
+    </div>
+  </div>
+
+  <div class="conn">▼</div>
+
+  <div class="node t-manage center">
+    <div class="n-num">PHASE 0</div>
+    <div class="n-body">
+      <div class="node-name">DeepSeek V4 Pro <span class="node-type">ORCHESTRATOR</span></div>
+      <div class="node-role">理解需求 · 派发 · 整合 · 验证 · 最终交付</div>
+      <div class="node-io">接需求 → 拆解 → 派给设计位；收尾时汇总修复意见、集成验证</div>
+      <div class="src-line">src: multi-agent-pipeline · default profile</div>
+    </div>
+  </div>
+
+  <div class="conn">▼</div>
+  <div class="fork-label">PARALLEL · 并行分叉</div>
+
+  <div class="fork-row">
+    <div class="node t-analyze">
+      <div class="n-num">PHASE 1a</div>
+      <div class="n-body">
+        <div class="node-name">GLM 5.2 <span class="node-type">DESIGN</span></div>
+        <div class="node-role">设计整体情况（代码/后端架构分析）</div>
+        <div class="node-io">输出：<b>文件清单 / 接口定义 / 数据模型 / 组件树 / 逻辑说明</b><br>不写代码，只出规格说明</div>
+        <div class="src-line">src: glm-review profile</div>
+      </div>
+    </div>
+    <div class="node t-write">
+      <div class="n-num">PHASE 1b</div>
+      <div class="n-body">
+        <div class="node-name">Qwen3.8-Max <span class="node-type">VISUAL · UI</span></div>
+        <div class="node-role">视觉与 UI 设计（原 Kimi K3 位）</div>
+        <div class="node-io">输出：<b>页面/组件清单 · 视觉规格（布局/配色/尺寸/状态）· 图表清单 · UI-API 对接点</b></div>
+        <div class="src-line">src: 视觉位 2026-08-14 已迁 Qwen</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="join-label">JOIN · 合并为完整架构规格</div>
+  <div class="conn">▼</div>
+
+  <div class="node t-code center">
+    <div class="n-num">PHASE 2</div>
+    <div class="n-body">
+      <div class="node-name">Kimi K2.7 <span class="node-type">CODER</span></div>
+      <div class="node-role">编写具体代码（逐文件派发）</div>
+      <div class="node-io">GLM 把规格拆成逐文件任务；Kimi 每次只拿「文件 + 改动指示」，输出完整代码<br>独立文件并行派发 · 有依赖串行</div>
+      <div class="src-line">src: kimi-coder profile</div>
+    </div>
+  </div>
+
+  <div class="conn">▼</div>
+  <div class="fork-label">PARALLEL · 每文件完成后即送审 · 并行分叉</div>
+
+  <div class="fork-row">
+    <div class="node t-analyze">
+      <div class="n-num">PHASE 3a</div>
+      <div class="n-body">
+        <div class="node-name">GLM 5.2 <span class="node-type">CODE REVIEW</span></div>
+        <div class="node-role">代码审查（逻辑 / 安全 / 风格）</div>
+        <div class="node-io">对照 Phase 1 规格检查：遗漏 / 安全漏洞 / 逻辑错误 / 风格一致<br>输出：✅ 通过 / ⚠️ 具体位置 + 修改建议</div>
+        <div class="src-line">src: glm-review profile</div>
+      </div>
+    </div>
+    <div class="node t-write">
+      <div class="n-num">PHASE 3b</div>
+      <div class="n-body">
+        <div class="node-name">Qwen3.8-Max <span class="node-type">VISUAL REVIEW</span></div>
+        <div class="node-role">视觉产出审查（原 Kimi K3 位）</div>
+        <div class="node-io">启动服务 → 截图 → 对照 Phase 1b 视觉规格：布局/配色/可读性/交互可见性/图表标注<br>输出：✅ 通过 / ⚠️ 修改位置 + 建议</div>
+        <div class="src-line">src: 视觉位 2026-08-14 已迁 Qwen</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="join-label">JOIN · 审查意见汇总</div>
+  <div class="conn">▼</div>
+
+  <div class="node t-manage center">
+    <div class="n-num">PHASE 4</div>
+    <div class="n-body">
+      <div class="node-name">DeepSeek V4 Pro <span class="node-type">INTEGRATE</span></div>
+      <div class="node-role">汇总审查意见 · 应用修复 · 集成验证</div>
+      <div class="node-io">应用 GLM 代码修复 + Qwen 视觉修复 → 重跑验证 → 模块接线 → 最终视觉复查</div>
+      <div class="src-line">src: multi-agent-pipeline · default profile</div>
+    </div>
+  </div>
+
+  <div class="conn">▼</div>
+
+  <div class="node t-data center">
+    <div class="n-num">OUTPUT</div>
+    <div class="n-body">
+      <div class="node-name">交付</div>
+      <div class="node-io">完整可运行的代码 + 视觉验证通过的页面/图表</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== 文件路由表 ===== -->
+<div class="table-block">
+  <div class="table-title">审查文件路由规则（原始 skill 定义，视觉位换 Qwen）</div>
+  <table>
+    <tr><th>文件类型</th><th>送 GLM 代码审查</th><th>送 Qwen 视觉审查</th></tr>
+    <tr><td>.py / .js / .ts / .go 后端代码</td><td class="ok">✅</td><td class="no">❌</td></tr>
+    <tr><td>.html / .css / .scss</td><td class="ok">✅</td><td class="ok">✅（并行送两边）</td></tr>
+    <tr><td>.svg / 图片文件</td><td class="no">❌</td><td class="ok">✅</td></tr>
+    <tr><td>图表生成代码（matplotlib/echarts/plotly 等）</td><td class="ok">✅（查逻辑）</td><td class="ok">✅（查视觉效果）</td></tr>
+  </table>
+</div>
+
+<div class="footer-note">
+  <h3>模型分工（一句话版）</h3>
+  <table>
+    <tr><td>DeepSeek V4 Pro</td><td>理解需求 · 编排调度 · 汇总修复 · 集成验证</td></tr>
+    <tr><td>GLM 5.2</td><td>设计整体情况（架构分析）+ 代码审查</td></tr>
+    <tr><td>Kimi K2.7</td><td>编写具体代码（逐文件）</td></tr>
+    <tr><td>Qwen3.8-Max</td><td>视觉与 UI 设计 + 视觉产出审查（原 Kimi K3 视觉位，成本指令）</td></tr>
+  </table>
+  <h3 style="margin-top:18px;">原始 skill 的使用边界（保留）</h3>
+  <table>
+    <tr><td>触发条件</td><td>视觉位（Phase 1b/3b）仅当项目含前端/图表/图片产出时启用；纯后端 API / CLI / 单行 CSS → 跳过视觉位</td></tr>
+    <tr><td class="warn">Solo 逃生口</td><td>用户催/急/怒 → 立即 Solo；单文件 &lt;50 行 → Solo；CRUD 3-5 文件 → Solo；超大重写(10+ 文件) → 仅 Phase 1 后按规格 solo</td></tr>
+    <tr><td>进度规则</td><td>每个 Phase 输出进度分隔线；每次派发/返回都有 📤/✅ 标记；30s 轮询硬规则</td></tr>
+  </table>
+</div>
+
+</div>
+</body>
+</html>
