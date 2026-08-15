@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>协同编码管线设计架构 — 视觉全 Qwen 化 + K3 收缩</title>
+<style>
+:root {
+  --paper: #faf8f3;
+  --paper-deep: #f2efe6;
+  --ink: #1c1a16;
+  --ink-soft: #4a463e;
+  --ink-mute: #8a8578;
+  --hairline: #e3dfd2;
+  --accent: #a63a2a;
+  --accent-deep: #862d20;
+  --c-analyze: #b3562e;
+  --c-code: #2f6b5e;
+  --c-write: #3a5a8c;
+  --c-manage: #6b4a8c;
+  --c-gate: #a63a2a;
+  --c-data: #8a8578;
+  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", "Consolas", monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1160px; margin: 0 auto; padding: 0 32px 80px; }
+
+header { padding: 56px 0 36px; border-bottom: 3px solid var(--ink); margin-bottom: 24px; }
+h1 { font-family: var(--serif); font-weight: 900; font-size: 31px; letter-spacing: .02em; }
+h1 em { font-style: normal; color: var(--accent); }
+.sub { color: var(--ink-mute); font-size: 13.5px; margin-top: 10px; font-family: var(--mono); letter-spacing: .03em; line-height: 1.8; }
+.sub b { color: var(--ink-soft); font-weight: 500; }
+
+.legend {
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+  padding: 16px 22px; background: var(--paper-deep);
+  border: 1px solid var(--hairline); margin-bottom: 28px;
+  font-size: 12.5px; color: var(--ink-soft);
+}
+.legend .lg { display: flex; align-items: center; gap: 7px; }
+.legend .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.legend b { color: var(--ink); font-weight: 600; }
+
+.lane {
+  display: grid; grid-template-columns: 148px 1fr; gap: 0;
+  border: 1px solid var(--hairline);
+  margin-bottom: 0; position: relative;
+}
+.lane + .lane { border-top: none; }
+.lane-label {
+  grid-row: 1; grid-column: 1;
+  padding: 22px 16px;
+  background: var(--paper-deep);
+  border-right: 1px solid var(--hairline);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.lane-num { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: .12em; }
+.lane-name { font-family: var(--serif); font-weight: 700; font-size: 16px; line-height: 1.4; }
+.lane-goal { font-size: 11.5px; color: var(--ink-mute); line-height: 1.5; }
+.lane-body {
+  grid-row: 1; grid-column: 2;
+  padding: 18px 22px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+.agents { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px, 1fr)); gap: 12px; }
+.agent {
+  background: #fff; border: 1px solid var(--hairline);
+  padding: 13px 15px 12px; position: relative;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.agent::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.agent.t-analyze::before { background: var(--c-analyze); }
+.agent.t-code::before { background: var(--c-code); }
+.agent.t-write::before { background: var(--c-write); }
+.agent.t-manage::before { background: var(--c-manage); }
+.agent.t-gate::before { background: var(--c-gate); }
+.agent.t-data::before { background: var(--c-data); }
+.agent.new { border: 1.5px solid var(--c-write); }
+.agent.new::after { content: "本次设计"; position: absolute; top: -9px; right: 8px; font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: #fff; background: var(--c-write); padding: 1px 7px; }
+.agent.shrink { border-style: dashed; opacity: .92; }
+.agent-name { font-family: var(--serif); font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.agent-type { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; padding: 2px 6px; border: 1px solid var(--hairline); color: var(--ink-mute); }
+.agent-role { font-size: 12.5px; color: var(--ink-soft); }
+.agent-io { font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); line-height: 1.55; }
+.agent-io b { color: var(--c-data); font-weight: 500; }
+.agent-src { font-family: var(--mono); font-size: 9.5px; color: var(--accent); margin-top: 2px; }
+.agent-src.warn { color: var(--c-gate); }
+
+.data-flow {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute);
+  background: var(--paper-deep); border: 1px dashed var(--hairline);
+  padding: 10px 14px;
+}
+.data-flow .arrow { color: var(--accent); }
+.contract {
+  font-family: var(--mono); font-size: 10.5px;
+  background: #fff; border: 1px solid var(--hairline);
+  padding: 2px 8px; color: var(--ink-soft);
+}
+.loop-tag { display: inline-block; font-family: var(--mono); font-size: 9.5px; color: var(--c-gate); border: 1px dashed var(--c-gate); padding: 1px 6px; margin-top: 2px; align-self: flex-start; }
+.loop-tag.blue { color: var(--c-write); border-color: var(--c-write); }
+
+.gate {
+  border: 2px solid var(--c-gate); background: #fff;
+  padding: 11px 16px; display: flex; align-items: center; gap: 14px;
+}
+.gate.blue { border-color: var(--c-write); }
+.gate-icon { font-size: 19px; }
+.gate-info { flex: 1; }
+.gate-name { font-family: var(--serif); font-weight: 700; font-size: 13.5px; color: var(--c-gate); }
+.gate.blue .gate-name { color: var(--c-write); }
+.gate-desc { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.gate-pass { font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); text-align: right; white-space: nowrap; }
+
+.connect { display: flex; justify-content: center; padding: 8px 0 2px; color: var(--accent); font-family: var(--mono); font-size: 16px; letter-spacing: .2em; }
+.loop-back {
+  display: flex; align-items: center; gap: 8px; justify-content: flex-end;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-mute);
+}
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.two-col .agent { height: 100%; }
+
+.footer-note {
+  margin-top: 40px; padding: 26px 28px;
+  background: var(--ink); color: #b9b4a6; font-size: 13px;
+}
+.footer-note h3 { font-family: var(--serif); color: var(--paper); font-size: 16px; margin-bottom: 12px; }
+.footer-note table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+.footer-note td { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.08); vertical-align: top; }
+.footer-note td:first-child { font-family: var(--mono); color: var(--paper); white-space: nowrap; width: 165px; }
+.footer-note .warn { color: #e8c07a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>协同编码管线设计架构 <em>视觉全 Qwen 化 · K3 收缩</em></h1>
+  <div class="sub"><b>设计 v1 · 2026-08-15 · 待批准（未改动任何实际配置/代码）</b><br>
+  指令：K3 太贵 → UI 设计 / 视觉检查 / OCR 全部交千问；K3 在编码管线收缩至推理审查位<br>
+  设计溯源：GLM 5.2 架构骨架 × Kimi K3 独立审查 × DeepSeek 编排（2026-08-14 混合编码管线产出） · 配套文档 coding_pipeline_design.md</div>
+</header>
+
+<div class="legend">
+  <div class="lg"><span class="dot" style="background:var(--c-manage)"></span><b>编排/评审</b></div>
+  <div class="lg"><span class="dot" style="background:var(--c-code)"></span><b>编码</b></div>
+  <div class="lg"><span class="dot" style="background:var(--c-write)"></span><b>视觉/UI</b></div>
+  <div class="lg"><span class="dot" style="background:var(--c-gate)"></span><b>门禁/防线</b></div>
+  <div class="lg"><span style="font-family:var(--mono);font-size:10px;border:1.5px solid var(--c-write);padding:1px 7px;">本次设计</span><b>新增/变更</b></div>
+  <div class="lg"><span style="font-family:var(--mono);font-size:10px;color:var(--c-gate);border:1px dashed var(--c-gate);padding:1px 6px;">K3 零视觉</span><b>硬约束</b></div>
+  <div class="lg"><span style="font-family:var(--mono);font-size:10px;border:1px dashed var(--ink-mute);padding:1px 6px;">收缩</span><b>职责收窄</b></div>
+</div>
+
+<!-- ==================== Lane 1 ==================== -->
+<div class="lane">
+  <div class="lane-label">
+    <div class="lane-num">LANE 01</div>
+    <div class="lane-name">编码任务流转</div>
+    <div class="lane-goal">骨架不变<br>T1/T2/T3 路由 · 门禁 · 评审</div>
+  </div>
+  <div class="lane-body">
+    <div class="agents">
+      <div class="agent t-manage">
+        <div class="agent-name">DeepSeek V4 Pro <span class="agent-type">ORCHESTRATOR</span></div>
+        <div class="agent-role">编排 · 任务分级路由 · 失败接管</div>
+        <div class="agent-io">T1&lt;30min → kimi-coder<br>T2 0.5–2h → kimi-coder<br><b>T3 &gt;2h → qwen-coder</b></div>
+        <div class="agent-src">src: multi-model-orchestration</div>
+      </div>
+      <div class="agent t-code">
+        <div class="agent-name">kimi-coder <span class="agent-type">K2.7</span></div>
+        <div class="agent-role">T1/T2 快速迭代 · 小修复 · 参数调整</div>
+        <div class="agent-io">已磨合工作流 · 不变</div>
+        <div class="agent-src">src: provider-model-matrix</div>
+      </div>
+      <div class="agent t-code">
+        <div class="agent-name">qwen-coder <span class="agent-type">QWEN3.8-MAX</span></div>
+        <div class="agent-role">T3 长任务自主编码（准入三测已过）</div>
+        <div class="agent-io">复杂模块从零实现 · 多文件项目<br>失败 ≤2 次 → DS 接管</div>
+        <div class="agent-src">src: 准入三测 2026-08-14</div>
+      </div>
+      <div class="agent t-manage">
+        <div class="agent-name">GLM 5.2 <span class="agent-type">ARCH-REVIEW</span></div>
+        <div class="agent-role">架构评审 · 代码结构 / 算法正确性</div>
+        <div class="agent-io">写评分离：Qwen 产物同样被审</div>
+        <div class="agent-src">src: glm-review</div>
+      </div>
+      <div class="agent t-manage shrink">
+        <div class="agent-name">Kimi K3 <span class="agent-type">REASON-REVIEW</span></div>
+        <div class="agent-role">推理审查（低频高价值）· 设计审查先行</div>
+        <div class="agent-io">视觉职责退役 → 仅此一项<br>不可用 → GLM 降级兜底</div>
+        <div class="agent-src warn">src: 成本收缩 · K3 视觉零调用</div>
+      </div>
+    </div>
+    <div class="gate">
+      <div class="gate-icon">⚙</div>
+      <div class="gate-info">
+        <div class="gate-name">确定性验收门禁</div>
+        <div class="gate-desc">编译 / 测试 / 可复现 / provenance —— 门禁不认模型，挂 build 钩子强制</div>
+      </div>
+      <div class="gate-pass">PASS → 入库 · FAIL×3 → DS 接管</div>
+    </div>
+    <div class="loop-back">收敛判定：通过 → 入库；失败 ≤2 次 → DeepSeek 接管重写（旧进程不杀并行对照——铁律）↺</div>
+  </div>
+</div>
+
+<!-- ==================== Lane 2 ==================== -->
+<div class="lane">
+  <div class="lane-label">
+    <div class="lane-num">LANE 02</div>
+    <div class="lane-name">视觉任务链</div>
+    <div class="lane-goal">全 Qwen 化<br>K3 视觉彻底退役<br>单点共模防护</div>
+  </div>
+  <div class="lane-body">
+    <div class="two-col">
+      <div class="agent t-write new">
+        <div class="agent-name">Qwen 视觉官 <span class="agent-type">QWEN3.8-MAX · vision</span></div>
+        <div class="agent-role">视觉核查 / UI 设计 / 图表渲染检查 / OCR / 页面验收 / 图内文字提取</div>
+        <div class="agent-io">vision_analyze 已切 custom provider<br>DashScope compatible-mode（已落地）</div>
+        <div class="agent-src">src: 视觉迁移 2026-08-14 已落地</div>
+      </div>
+      <div class="agent t-data shrink">
+        <div class="agent-name">K3 视觉位 <span class="agent-type">RETIRED</span></div>
+        <div class="agent-role">已退役（成本指令）：K3 视觉 API 高频高成本</div>
+        <div class="agent-io">路由层硬编码禁止 K3 视觉路径<br>K3 调用面收缩 &gt;70%</div>
+        <div class="agent-src warn">src: 成本驱动角色重排 2026-08-14</div>
+      </div>
+    </div>
+    <div class="data-flow">
+      <span class="contract">视觉任务硬路由</span> UI 设计 → <b>Qwen 视觉官</b> <span class="arrow">·</span> vision_analyze → <b>Qwen</b> <span class="arrow">·</span> 渲染检查 → <b>Qwen</b> <span class="arrow">·</span> OCR → <b>Qwen</b> <span class="arrow">·</span> 页面验收 → <b>Qwen</b>
+      <span class="loop-tag">K3 视觉调用 = 0（30 天日志审计）</span>
+    </div>
+    <div class="gate blue">
+      <div class="gate-icon">👁</div>
+      <div class="gate-info">
+        <div class="gate-name">视觉单点共模防护（本次设计核心）</div>
+        <div class="gate-desc">Qwen 既是图的生产者（T3 编码画图）又是检查者（视觉官）——错误可能被「确认」而非「检出」。三道防线：
+        ① <b>OCR 双读取头</b>：Qwen vision + PaddleOCR（非 LLM），关键字段两读不一致 → 升级人工/重渲染；
+        ② <b>程序化渲染断言（零 LLM）</b>：字体嵌入检查 / 像素非空率 / 文字区域检测——豆腐块、空图不经过任何模型判断；
+        ③ <b>种子缺陷图注入回归</b>：已知缺陷图库注入视觉检查，漏报即阻断（与检测层种子库同构）。</div>
+      </div>
+      <div class="gate-pass">双头同漏 ≤1/20 · 断言检出率 100%</div>
+    </div>
+    <div class="gate">
+      <div class="gate-icon">↩</div>
+      <div class="gate-info">
+        <div class="gate-name">视觉失败回退（显式代价）</div>
+        <div class="gate-desc">Qwen 视觉官失败 → 重试 ≤2 次 → 人工介入。K3 视觉零调用 = 视觉无模型回退——这是成本指令的显式代价，写进设计而非默认。</div>
+      </div>
+      <div class="gate-pass">重试×2 → 人工</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Lane 3 ==================== -->
+<div class="lane">
+  <div class="lane-label">
+    <div class="lane-num">LANE 03</div>
+    <div class="lane-name">成本与验收</div>
+    <div class="lane-goal">成本收缩可测<br>验收标准 7 条</div>
+  </div>
+  <div class="lane-body">
+    <div class="two-col">
+      <div class="agent t-data">
+        <div class="agent-name">K3 调用面收缩 <span class="agent-type">COST</span></div>
+        <div class="agent-role">收缩前：视觉高频高成本 + 推理审查</div>
+        <div class="agent-io">收缩后：<b>仅推理审查（低频）</b><br>视觉 → Qwen（DashScope 计费，远低于 K3 视觉计费）<br>目标：视觉成本实测对比 ≤ 原 K3 视觉基线</div>
+        <div class="agent-src">src: 首战实测账单为准</div>
+      </div>
+      <div class="agent t-gate">
+        <div class="agent-name">验收标准 <span class="agent-type">7 条 · 可测</span></div>
+        <div class="agent-io">A1 K3 视觉零调用（30 天日志审计 = 0）<br>A2 视觉任务 100% 走 Qwen 硬路由<br>A3 双读取头共模同漏 ≤1/20 张种子图<br>A4 渲染断言：缺字体/空图检出率 100%<br>A5 视觉成本账单 ≤ K3 视觉原基线<br>A6 视觉失败回退路径演练可走通<br>A7 写评分离不变：Qwen 产物同过门禁+GLM 评审</div>
+        <div class="agent-src">src: GLM 骨架 AC × Kimi 审查 C</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-note">
+  <h3>角色矩阵（编码管线 · 设计目标态）</h3>
+  <table>
+    <tr><td>DeepSeek V4 Pro</td><td>编排 / 任务分级路由 / 失败接管（不变）</td></tr>
+    <tr><td>kimi-coder K2.7</td><td>T1/T2 快速编码（不变）</td></tr>
+    <tr><td>qwen-coder Qwen3.8-Max</td><td>T3 长任务编码（不变，准入三测已过）</td></tr>
+    <tr><td>GLM 5.2</td><td>架构评审（不变，写评分离）</td></tr>
+    <tr><td>Kimi K3</td><td><b>收缩</b>：推理审查（低频高价值）· 视觉零调用</td></tr>
+    <tr><td>Qwen3.8-Max 视觉官</td><td><b>本次设计固化</b>：视觉核查 / UI 设计 / 渲染检查 / OCR / 页面验收 / 图内文字提取</td></tr>
+    <tr><td>确定性层</td><td>门禁不认模型 · 视觉三防线（双读取头/渲染断言/种子图回归）</td></tr>
+  </table>
+  <h3 style="margin-top:18px;">设计裁决记录（GLM × Kimi）</h3>
+  <table>
+    <tr><td>采纳 Kimi ×4</td><td>①OCR 双读取头 + 程序化断言 + 种子图回归（生产者=检查者共模风险）②K3 视觉零调用硬约束（30 天审计）③视觉无模型回退的显式代价声明 ④K3 不可用 → GLM 降级兜底</td></tr>
+    <tr><td>驳回 GLM ×1</td><td>「K3 单价为 Qwen 8–12 倍」——无账单依据，不进入结论（以 A5 实测账单为准）</td></tr>
+    <tr><td class="warn">待批准</td><td>①视觉硬路由 + K3 收缩正式固化进 multi-model-orchestration SKILL？②视觉三防线（PaddleOCR 双读取头/渲染断言脚本/种子缺陷图库）落地？③K3 推理审查位保留频次（每任务 ≤1 次，仅设计/架构类）？</td></tr>
+  </table>
+</div>
+
+</div>
+</body>
+</html>
