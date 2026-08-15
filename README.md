@@ -31,7 +31,7 @@ Kimi K2.7 Code   编写具体代码（逐文件）
 Qwen3.8-Max      视觉与 UI 设计 + 视觉产出审查（原 Kimi K3 视觉位，成本指令）
 ```
 
-可执行实现见 `pipeline/`（`python3 pipeline/coding_pipeline.py --project-dir ... --requirement ...`）。
+可执行实现见 `pipeline/`（`python3 pipeline/coding_pipeline.py --project-dir ... --requirement ...`）；架构与技术要点详见 `pipeline/ARCHITECTURE.md`。
 
 ## 版本时间线（git tag）
 
