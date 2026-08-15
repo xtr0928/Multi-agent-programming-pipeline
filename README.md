@@ -1,31 +1,46 @@
 # Multi-agent Programming Pipeline
 
-> **一句话：让四个大模型各干自己最擅长的事——你给一句需求，它流水线式产出「设计 → 代码 → 审查 → 修复」后的完整可运行项目。**
+> **一句话：让四个大模型各干自己最擅长的事——但动手编码之前，永远先问清你的需求、调研开源方案、由你拍板技术选型、由你确认设计文档。**
 
-这是一个**多模型协同编码管线**：不再让单个模型包办一切，而是把一次软件开发拆成设计、编码、审查、集成四个环节，分别交给四个不同模型家族的模型，用交叉审查补单模型的盲区，最后交回一个验证过的成品。
+这是一个**多模型协同编码管线**：不再让单个模型包办一切，而是把一次软件开发拆成「规划」和「执行」两段。规划段把决策权交给你（需求澄清 → 开源调研 → 技术选型 → 设计文档确认），执行段把四个环节交给四个不同模型家族的模型（设计 → 编码 → 审查 → 修复），最后交回一个验证过的成品。
+
+## 完整工作流（用户定下的规矩）
 
 ```
+① 先问清具体需求        编排者与你逐条澄清，产出确认版需求
+② 搜开源项目架构        GitHub 搜索同类项目，汇总它们用的技术方案
+③ 你选技术方案          候选方案逐个列出优点/缺点/适用场景/代表项目 → 你逐项拍板
+④ 详细设计文档          基于确认需求 + 你的选型，产出架构设计文档 → 你确认
+⑤ 按文档执行            确认后才交给四模型管线编码
+```
+
+**没有你的确认，编码一步都不会走。**
+
+```
+执行阶段四模型分工：
 DeepSeek V4 Pro   理解需求 · 编排调度 · 汇总修复 · 集成验证
 GLM 5.2           设计整体架构（文件清单+逐文件规格）· 代码审查
 Kimi K2.7 Code    编写具体代码（逐文件）
 Qwen3.8-Max       视觉与 UI 设计 · 视觉产出审查（截图级）
 ```
 
-## 一张图看懂
+## 一张图看懂（执行阶段）
 
 ![协同编码管线流程图](docs/coding_pipeline_flow.png)
 
-## 怎么工作的（5 阶段）
+## 怎么工作的
 
-| 阶段 | 谁 | 做什么 | 产出 |
-|---|---|---|---|
-| Phase 0 | DeepSeek | 理解需求、定边界、判定是否含视觉产出 | `requirements.md` |
-| Phase 1 | GLM ∥ Qwen（并行） | GLM 设计整体架构（每个文件写什么、接口是什么）；Qwen 出视觉与 UI 规格 | `design.md` + `visual_spec.md` |
-| Phase 2 | Kimi coder | 按 GLM 的清单逐文件写代码，独立文件并行、有依赖串行 | 项目代码 |
-| Phase 3 | GLM ∥ Qwen（并行） | GLM 对照规格审代码；Qwen 把页面渲染成截图逐像素审视觉 | 两份审查报告 |
-| Phase 4 | DeepSeek | 汇总问题、重写修复被标记的文件、出交付报告 | 修复后的代码 + `final_report.md` |
+**规划阶段**（`pipeline/planning.py`，每步停下等你决策）：
 
-核心原则只有三条：**设计的不写码，写码的不自审，审视觉的做视觉设计**——三个环节互相交叉，谁的问题都会被下一环看到。
+| 命令 | 做什么 | 产出 |
+|---|---|---|
+| （编排者）澄清需求 | 与你逐条确认目标/功能/边界 | `planning/requirements_confirmed.md` |
+| `planning.py research` | GitHub 搜索开源项目 → 汇总技术架构 | `planning/research_notes.md` |
+| `planning.py options` | 按维度列候选方案优缺点详解 | `planning/tech_options.md` + `choices.json` → **你选择** |
+| `planning.py design` | 按你的选型出详细设计文档 | `planning/design_doc.md` → **你确认** |
+| `planning.py build` | 调执行阶段开始编码 | 项目代码 |
+
+**执行阶段**（`pipeline/coding_pipeline.py`，设计文档作为硬约束传入）：GLM 逐文件设计 ∥ Qwen 视觉规格 → Kimi 编码 → GLM∥Qwen 并行审查 → DeepSeek 修复集成。
 
 ## 快速开始
 
@@ -36,31 +51,32 @@ cd Multi-agent-programming-pipeline
 # 配置四个模型的 API key（或写入 pipeline/.env，已 gitignore）
 export DEEPSEEK_API_KEY=... GLM_API_KEY=... KIMI_API_KEY=... QWEN_API_KEY=...
 
-# 一条命令出项目
-python3 pipeline/coding_pipeline.py \
-  --project-dir ./my_project \
-  --requirement "做一个xxx：……（功能、技术栈、边界）"
+# 完整流程：先规划（每步产物给用户确认），后执行
+python3 pipeline/planning.py research --project-dir ./my_project --requirement "做一个xxx"
+python3 pipeline/planning.py options  --project-dir ./my_project
+python3 pipeline/planning.py design   --project-dir ./my_project
+python3 pipeline/planning.py build    --project-dir ./my_project
+
+# 跳过规划直接执行（仅限需求已非常明确的情况）
+python3 pipeline/coding_pipeline.py --project-dir ./my_project --requirement "……"
 ```
 
-产物：代码写在 `my_project/` 下，全过程中间产物（需求/设计/审查/交付报告）在 `my_project/pipeline_artifacts/`。
-
-> 什么时候**不**用管线：单文件小改、CRUD、用户催着要结果——直接自己写（solo）更快更省。管线是给「多文件、有前端、值得走一遍设计」的任务准备的。
+> 什么时候**不**用管线：单文件小改、CRUD、用户催着要结果——直接自己写（solo）更快更省。
 
 ## 仓库结构
 
 ```
 pipeline/
-  coding_pipeline.py            # 主流程（5 阶段编排）
-  llm_client.py                 # 四模型统一接口（含 Qwen 图像输入、重试、推理预算）
+  planning.py                   # 规划阶段：调研/选型/设计文档（用户决策点）
+  coding_pipeline.py            # 执行阶段：5 阶段编排
+  llm_client.py                 # 四模型统一接口
   ARCHITECTURE.md               # 架构与技术要点详细文档（必读）
-  README.md                     # 管线用法速查
 skills/
-  multi-model-orchestration/    # 多模型编排方法论（SKILL + provider 实测矩阵）
+  multi-model-orchestration/    # 多模型编排方法论
   hermes-model-management/      # API key 验证/连接调试
 docs/
-  coding_pipeline_flow.png      # 四模型分工流程图（本 README 所嵌）
-  pipelines-split-2026-08.md    # 三仓库分家说明（数模/编码/通用工具）
-  qwen_coding_arch.png          # 历史：Qwen 接入编码管线设计图
+  coding_pipeline_flow.png      # 执行阶段流程图
+  pipelines-split-2026-08.md    # 三仓库分家说明
 ```
 
 ## 演进时间线
@@ -70,7 +86,7 @@ docs/
 | `v1.0.0` | 多模型编排初版（DS 编排 / GLM 设计评审 / Kimi 编码分工） |
 | `v1.1.0` | 接入 Qwen3.8-Max：长任务编码位（准入三测通过） |
 | `v1.2.0` | 视觉/UI 全迁 Qwen3.8-Max（Kimi K3 视觉位退役，成本指令） |
-| `main` | 可执行管线落地：五阶段实现 + 四模型接口 + 详细架构文档 |
+| `main` | 可执行管线 + 规划阶段（需求澄清/开源调研/用户选型/设计确认） |
 
 ## 相关仓库
 

@@ -92,8 +92,10 @@ def phase0_requirements(project_dir, requirement):
 
 
 # ---------------------------------------------------------------- Phase 1
-def phase1_design(project_dir, requirements, has_visual):
+def phase1_design(project_dir, requirements, has_visual, design_context=''):
     banner('Phase 1/4 · GLM 整体设计' + (' ∥ Qwen 视觉与UI设计' if has_visual else ''))
+    ctx = (f'\n\n【已确认的设计架构文档（技术选型与架构方向已由用户确认，必须严格遵守，不得更改或引入新选型）】\n{design_context[:12000]}'
+           if design_context else '')
     system = ('你是协同编码管线的架构设计者 GLM。基于需求文档，设计整体情况（不写代码）。\n'
               '输出必须严格按以下格式（中文）：\n\n'
               '# 设计文档\n'
@@ -108,7 +110,7 @@ def phase1_design(project_dir, requirements, has_visual):
               '文件按实施顺序排列（先基础后上层）。前端文件也列入清单（若需求含视觉产出）。\n'
               '若多个文件相互独立，可在它们之前加一行 "## GROUP" 表示可并行编写。')
     sent(ROLE_NAME['glm'])
-    r = ask('glm', system, f'需求文档：\n{requirements}', max_tokens=65536)
+    r = ask('glm', system, f'需求文档：\n{requirements}{ctx}', max_tokens=65536)
     done(ROLE_NAME['glm'], r)
     if 'error' in r:
         sys.exit(1)
@@ -355,6 +357,7 @@ def main():
     ap = argparse.ArgumentParser(description='协同编码管线（DS 编排 / GLM 设计+审查 / Kimi 编码 / Qwen 视觉）')
     ap.add_argument('--project-dir', required=True, help='项目目录（代码与产物都写入这里）')
     ap.add_argument('--requirement', required=True, help='需求文本，或以 @ 开头的文件路径')
+    ap.add_argument('--design-context', help='已确认的设计架构文档（@文件路径）——技术选型已定，GLM 不再重做选型')
     args = ap.parse_args()
 
     project_dir = os.path.abspath(args.project_dir)
@@ -362,6 +365,12 @@ def main():
     requirement = args.requirement
     if requirement.startswith('@'):
         requirement = read_text(requirement[1:])
+    design_context = ''
+    if args.design_context:
+        dc = args.design_context
+        if dc.startswith('@'):
+            dc = read_text(dc[1:])
+        design_context = dc
     if not requirement.strip():
         sys.exit('❌ 需求为空')
 
@@ -371,7 +380,7 @@ def main():
     print('=' * 62)
 
     requirements, has_visual = phase0_requirements(project_dir, requirement)
-    design, files = phase1_design(project_dir, requirements, has_visual)
+    design, files = phase1_design(project_dir, requirements, has_visual, design_context)
     visual_spec = phase1b_visual(project_dir, requirements, design, files) if has_visual else ''
     written = phase2_code(project_dir, files)
     print(f'\n📦 代码产出 {len(written)}/{len(files)} 个文件')

@@ -1,6 +1,22 @@
 # 协同编码管线（可执行）
 
-回归原始四模型分工架构的实现（**完整架构与技术要点见 [ARCHITECTURE.md](ARCHITECTURE.md)**）：
+回归原始四模型分工架构的实现（**完整架构与技术要点见 [ARCHITECTURE.md](ARCHITECTURE.md)**）。
+
+两段式流程：**规划阶段**（`planning.py`：需求澄清 → 开源调研 → 技术选型由用户拍板 → 设计文档由用户确认）→ **执行阶段**（`coding_pipeline.py`：四模型编码）。
+
+```bash
+# 规划阶段（每步产物停下来等用户决策）
+python3 pipeline/planning.py research --project-dir ./proj --requirement "做一个xxx"
+python3 pipeline/planning.py options  --project-dir ./proj     # 用户按 tech_options.md 选择 → 编排者写 choices_final.json
+python3 pipeline/planning.py design   --project-dir ./proj     # 用户确认 design_doc.md
+python3 pipeline/planning.py build    --project-dir ./proj     # 进入执行阶段
+
+# 或跳过规划直接执行（仅需求非常明确时）
+python3 pipeline/coding_pipeline.py --project-dir ./proj --requirement "……" \
+  [--design-context @已确认设计文档.md]
+```
+
+执行阶段四模型分工：
 
 ```
 DeepSeek V4 Pro  理解需求 · 编排调度 · 汇总修复 · 集成验证
