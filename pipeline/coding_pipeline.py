@@ -44,10 +44,18 @@ def done(name, r):
 
 # ---------------------------------------------------------------- 工具
 def safe_path(project_dir, rel):
-    rel = rel.strip().lstrip('/').replace('\\', '/')
-    assert '..' not in rel.split('/'), f'非法路径: {rel}'
-    full = os.path.normpath(os.path.join(project_dir, rel))
-    assert full.startswith(os.path.normpath(project_dir) + os.sep), f'越界路径: {rel}'
+    """严格保证文件位置：只允许落在 project_dir 之内的路径。
+    绝对路径（GLM 设计清单常给绝对路径）与相对路径统一归一后校验边界。"""
+    rel = rel.strip().replace('\\', '/')
+    base = os.path.normpath(os.path.abspath(project_dir))
+    if rel.startswith('/'):
+        full = os.path.normpath(rel)          # 绝对路径：按原样使用
+    else:
+        rel = rel.lstrip('/')
+        assert '..' not in rel.split('/'), f'非法路径: {rel}'
+        full = os.path.normpath(os.path.join(base, rel))
+    if not (full == base or full.startswith(base + os.sep)):
+        raise AssertionError(f'越界路径: {rel} → {full}')
     return full
 
 
@@ -181,7 +189,11 @@ def _write_one(project_dir, f, files_done):
     os.makedirs(os.path.dirname(full), exist_ok=True)
     with open(full, 'w', encoding='utf-8') as fh:
         fh.write(strip_fences(r['content']))
-    return f['path'], full, len(r['content'])
+    # 写后校验：严格保证文件落在目标位置且内容落盘
+    written_back = read_text(full)
+    if not written_back.strip():
+        return f['path'], None, f'写后校验失败: {full} 为空'
+    return f['path'], full, len(written_back)
 
 
 def phase2_code(project_dir, files):
@@ -326,11 +338,27 @@ def phase4_integrate(project_dir, files, review_code, review_visual, requirement
             r = ask('deepseek', system, user, reasoning='high', max_tokens=32768)
             done('DeepSeek 修复', r)
             if 'error' not in r:
+                before = read_text(full)
                 with open(full, 'w', encoding='utf-8') as fh:
                     fh.write(strip_fences(r['content']))
-                fixed.append(path)
-    else:
-        print('✅ 无审查问题，无需修复')
+                after = read_text(full)
+                if after.strip() and after != before:
+                    fixed.append(path)
+                else:
+                    print(f'⚠️ {path} 修复写回无效（内容为空或未变化）')
+
+    # 交付物落盘核查（确定性）：只报告真实文件状态，杜绝报告幻觉
+    verify_rows = []
+    for f in files:
+        full = safe_path(project_dir, f['path'])
+        if os.path.exists(full):
+            sz = os.path.getsize(full)
+            verify_rows.append(f'- {f["path"]}: 存在, {sz} 字节')
+        else:
+            verify_rows.append(f'- {f["path"]}: 缺失！')
+    verify_block = '\n'.join(verify_rows)
+    print('\n【交付物落盘核查】')
+    print(verify_block)
 
     # 最终报告
     system = ('你是协同编码管线的编排者 DeepSeek。生成最终交付报告（中文），包含：\n'
