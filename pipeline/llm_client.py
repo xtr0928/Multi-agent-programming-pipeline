@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """协同编码管线 LLM 客户端：四模型统一接口
-DeepSeek V4 Pro（编排）/ GLM 5.2（整体设计+代码审查）/ Kimi K2.7 Code（逐文件编码）/ Qwen3.8-Max（视觉与UI设计+视觉审查）
+DeepSeek V4 Pro（编排）/ GLM 5.3（整体设计+代码审查）/ Kimi K2.7 Code（逐文件编码）/ Qwen3.8-Max（视觉与UI设计+视觉审查）
 
 用法：
     from llm_client import ask
@@ -41,7 +41,7 @@ CONFIG = {
     'glm': {
         'url': 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
         'key': _ENV.get('GLM_API_KEY', ''),
-        'model': 'glm-5.2',  # 推理模型：reasoning_content 消耗 max_tokens，预算需给足
+        'model': 'glm-5.3',  # 推理模型：reasoning_content 消耗 max_tokens，预算需给足
     },
     'kimi': {
         'url': (_ENV.get('KIMI_BASE_URL', 'https://api.moonshot.cn/v1').rstrip('/')

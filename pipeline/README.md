@@ -20,7 +20,7 @@ python3 pipeline/coding_pipeline.py --project-dir ./proj --requirement "……" 
 
 ```
 DeepSeek V4 Pro  理解需求 · 编排调度 · 汇总修复 · 集成验证
-GLM 5.2          设计整体情况（架构分析）+ 代码审查
+GLM 5.3          设计整体情况（架构分析）+ 代码审查
 Kimi K2.7 Code   编写具体代码（逐文件）
 Qwen3.8-Max      视觉与 UI 设计 + 视觉产出审查（原 Kimi K3 视觉位）
 ```
@@ -50,7 +50,7 @@ python3 pipeline/coding_pipeline.py \
 
 ## 模型注意（实测 2026-08-15）
 
-- `kimi-k2.7-code` 与 `glm-5.2` 均为推理模型：`reasoning_content` 消耗 max_tokens 预算，
+- `kimi-k2.7-code` 与 `glm-5.3` 均为推理模型：`reasoning_content` 消耗 max_tokens 预算，
   客户端已按需给足（编码 32K / 设计 64K）。
 - Kimi 系列 API 仅允许 `temperature=1`（客户端已强制）。
 - Qwen 走 DashScope compatible-mode（`qwen3.8-max`），支持图像输入（视觉审查用）。

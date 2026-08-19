@@ -144,7 +144,7 @@ DeepSeek 在 requirements 中输出一行 `VISUAL: yes|no`。判定依据：交�
 | 模型 | 实测特性 | 客户端处理 |
 |---|---|---|
 | `deepseek-v4-pro` | 推理模型；支持 `reasoning_effort`（none~max） | 编排/调研/选型/设计任务用 `high` |
-| `glm-5.2` | **推理模型：`reasoning_content` 消耗 max_tokens 预算** | 设计 64K、审查 8K 预算 |
+| `glm-5.3` | **推理模型：`reasoning_content` 消耗 max_tokens 预算** | 设计 64K、审查 8K 预算 |
 | `kimi-k2.7-code` | **推理型 coder：同上**；API 仅允许 `temperature=1` | 编码 32K 预算、强制 temperature=1 |
 | `qwen3.8-max` | 支持图像输入（多模态）；DashScope compatible-mode | 图像走 base64 data URL |
 

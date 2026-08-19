@@ -6,7 +6,7 @@ Known-good combinations discovered and validated through direct API testing.
 
 | Model | Context | Tested | Notes |
 |---|---|---|---|
-| `glm-5.2` | 1,048,576 | ✅ | Latest, 1M context |
+| `glm-5.3` | 1,048,576 | ✅ | Latest, 1M context |
 | `glm-4-plus` | ~128K | ✅ | General purpose |
 | `glm-4-flash` | ~128K | ✅ | Fast/cheap |
 
