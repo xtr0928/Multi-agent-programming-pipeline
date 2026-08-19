@@ -4,7 +4,7 @@
 
     DeepSeek V4 Pro  理解需求 · 编排 · 汇总修复 · 集成验证
     GLM 5.3          设计整体情况（架构分析）+ 代码审查
-    Kimi K2.7 Code   编写具体代码（逐文件）
+    GLM 5.3          编写具体代码（逐文件，UI 文件由 Qwen 编写）
     Qwen3.8-Max      视觉与 UI 设计 + 视觉产出审查
 
 用法：
@@ -13,7 +13,7 @@
 
 产物：
     <project>/pipeline_artifacts/  requirements / design / visual_spec / review_code / review_visual / final_report
-    <project>/<GLM 设计的文件路径>   Kimi 编写的代码（Phase 4 修复后为终版）
+    <project>/<GLM 设计的文件路径>   GLM 编写的代码（Phase 4 修复后为终版）
 """
 import argparse, json, os, re, sys, time, base64
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -172,30 +172,16 @@ def phase1b_visual(project_dir, requirements, design, files):
 
 
 # ---------------------------------------------------------------- Phase 2
-# v1.3 文件路由（2026-08-19，博士拍板）：常规 → Kimi；UI 相关 → Qwen；大文件非UI → GLM
-LARGE_SIZE_BYTES = 30 * 1024     # 大文件阈值：>30KB
-LARGE_LINES = 1000               # 或 >1000 行
+# v1.4 文件路由（2026-08-19，博士拍板）：UI 文件 → Qwen；其余全部 → GLM 5.3（K2.7 退役）
 UI_EXTS = ('.html', '.htm', '.css', '.svg', '.vue', '.jsx', '.tsx', '.mdx')
 
 
 def route_coder(project_dir, f):
     # 确定性路由：返回 (provider, 显示名)
     path = f['path'].lower()
-    is_ui = path.endswith(UI_EXTS)
-    full = safe_path(project_dir, f['path'])
-    is_large = False
-    if os.path.exists(full):
-        try:
-            size = os.path.getsize(full)
-            lines = read_text(full).count('\n')
-            is_large = size > LARGE_SIZE_BYTES or lines > LARGE_LINES
-        except OSError:
-            pass
-    if is_ui:
+    if path.endswith(UI_EXTS):
         return 'qwen', 'Qwen3.8-Max（视觉位）'
-    if is_large:
-        return 'glm', 'GLM 5.3（大文件位）'
-    return 'kimi', 'Kimi K2.7 Code'
+    return 'glm', 'GLM 5.3'
 
 
 def _write_one(project_dir, f, files_done):
@@ -225,7 +211,7 @@ def _write_one(project_dir, f, files_done):
 
 
 def phase2_code(project_dir, files):
-    banner(f'Phase 2/4 · 路由编码（{len(files)} 个文件）· Kimi 常规 / GLM 大文件 / Qwen UI')
+    banner(f'Phase 2/4 · 路由编码（{len(files)} 个文件）· GLM 5.3 常规+大文件 / Qwen UI')
     written = {}
     i = 0
     while i < len(files):
@@ -412,7 +398,7 @@ def phase4_integrate(project_dir, files, review_code, review_visual, requirement
 
 # ---------------------------------------------------------------- main
 def main():
-    ap = argparse.ArgumentParser(description='协同编码管线（DS 编排 / GLM 设计+审查 / Kimi 编码 / Qwen 视觉）')
+    ap = argparse.ArgumentParser(description='协同编码管线（DS 编排 / GLM 设计+编码+审查 / Qwen 视觉）')
     ap.add_argument('--project-dir', required=True, help='项目目录（代码与产物都写入这里）')
     ap.add_argument('--requirement', required=True, help='需求文本，或以 @ 开头的文件路径')
     ap.add_argument('--design-context', help='已确认的设计架构文档（@文件路径）——技术选型已定，GLM 不再重做选型')
@@ -434,7 +420,7 @@ def main():
 
     print('=' * 62)
     print(f'协同编码管线 · 项目 {project_dir}')
-    print('DeepSeek 理解需求 → GLM 整体设计 ∥ Qwen 视觉UI → Kimi coder 编码 → 并行审查 → DeepSeek 集成')
+    print('DeepSeek 理解需求 → GLM 整体设计 ∥ Qwen 视觉UI → GLM coder 编码 → 并行审查 → DeepSeek 集成')
     print('=' * 62)
 
     requirements, has_visual = phase0_requirements(project_dir, requirement)

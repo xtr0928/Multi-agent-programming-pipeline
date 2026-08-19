@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>协同编码管线 · 详细架构图（v1.3）</title>
+<title>协同编码管线 · 详细架构图（v1.4）</title>
 <style>
 :root {
   --paper: #f7f3ea; --paper2: #efe8d8; --ink: #26221c; --ink-soft: #5a534a;
@@ -85,7 +85,7 @@ td .mono, .mono { font-size: 11px; }
 <div class="topbar"><span></span><span></span><span></span><span></span><span></span><span></span></div>
 
 <h1>协同编码管线 · 详细架构图</h1>
-<div class="sub">v1.3 · 原始四模型分工 · 一条简单流水线（无门禁/无阶梯/无仲裁）</div>
+<div class="sub">v1.4 · 三模型分工（K2.7（已退役） 已退役）· 一条简单流水线（无门禁/无阶梯/无仲裁）</div>
 
 <h2>一、仓库结构</h2>
 <div class="repo">
@@ -114,11 +114,9 @@ td .mono, .mono { font-size: 11px; }
   </div>
   <div class="model glm">
     <div class="mn">GLM 5.3</div>
-    <div class="mr">整体设计 · 代码审查<br>大文件编码位（UI 无关）</div>
+    <div class="mr">整体设计 · 代码审查<br>编码位（常规 + 大文件，UI 除外）</div>
     <div class="mp">上下文 <b>1M</b> · 输出 <b>128K</b> · max_tokens <b>65536</b></div>
   </div>
-  <div class="model kimi">
-    <div class="mn">Kimi K2.7 Code</div>
     <div class="mr">常规文件编码<br>（上下文 256K，大活不接）</div>
     <div class="mp">上下文 <b>256K</b> · max_tokens <b>65536</b></div>
   </div>
@@ -162,13 +160,12 @@ td .mono, .mono { font-size: 11px; }
 <div class="arrow">↓</div>
 
 <div class="phase">
-  <div class="pstage"><b>Phase 2</b>路由编码</div>
+  <div class="pstage"><b>Phase 2</b>路由编码（GLM/Qwen）</div>
   <div class="routewrap">
-    <div class="rt">route_coder() — 确定性三分流（按扩展名与现有文件大小，无 LLM 参与）</div>
+    <div class="rt">route_coder() — 确定性二分流（按扩展名，无 LLM 参与）</div>
     <div class="tree">
       <div>① 扩展名 ∈ {.html .css .svg .vue .jsx .tsx .mdx}？ ── 是 ──→ <b class="qwen">Qwen3.8-Max</b>（UI 文件，对照 visual_spec）</div>
-      <div class="lv">└─ 否：目标文件已存在且（&gt;30KB 或 &gt;1000 行）？ ── 是 ──→ <b class="glm">GLM 5.3</b>（大文件位）</div>
-      <div class="lv2">└─ 否（含尚不存在的新文件）──→ <b class="kimi">Kimi K2.7 Code</b>（常规位）</div>
+      <div class="lv">└─ 否（常规 / 大文件 / 新文件）──→ <b class="glm">GLM 5.3</b>（编码位，1M 上下文承接全文重写）</div>
     </div>
     <div class="nd" style="margin-top:8px;font-size:11.5px;color:var(--ink-soft)">
       编码提示词强制：完整输出全文、禁止省略、禁止以注释代替内容、禁止改写与任务无关部分。

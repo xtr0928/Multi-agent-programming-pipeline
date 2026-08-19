@@ -20,7 +20,7 @@
 执行阶段四模型分工：
 DeepSeek V4 Pro   理解需求 · 编排调度 · 汇总修复 · 集成验证
 GLM 5.3           设计整体架构（文件清单+逐文件规格）· 代码审查
-Kimi K2.7 Code    编写具体代码（逐文件）
+GLM 5.3          编写具体代码（逐文件，UI 文件由 Qwen 编写）
 Qwen3.8-Max       视觉与 UI 设计 · 视觉产出审查（截图级）
 ```
 
@@ -40,7 +40,7 @@ Qwen3.8-Max       视觉与 UI 设计 · 视觉产出审查（截图级）
 | `planning.py design` | 按你的选型出详细设计文档 | `planning/design_doc.md` → **你确认** |
 | `planning.py build` | 调执行阶段开始编码 | 项目代码 |
 
-**执行阶段**（`pipeline/coding_pipeline.py`，设计文档作为硬约束传入）：GLM 逐文件设计 ∥ Qwen 视觉规格 → **路由编码**（Kimi 常规 / GLM 大文件非UI / Qwen UI 文件，阈值 >30KB 或 >1000 行）→ GLM∥Qwen 并行审查 → DeepSeek 修复集成。
+**执行阶段**（`pipeline/coding_pipeline.py`，设计文档作为硬约束传入）：GLM 逐文件设计 ∥ Qwen 视觉规格 → **路由编码**（GLM 5.3 常规+大文件 / Qwen UI 文件；K2.7 已退役）→ GLM∥Qwen 并行审查 → DeepSeek 修复集成。
 
 ## 快速开始
 
@@ -84,6 +84,7 @@ docs/
 | tag | 里程碑 |
 |---|---|
 | `v1.0.0` | 多模型编排初版（DS 编排 / GLM 设计评审 / Kimi 编码分工） |
+| `v1.4.0` | K2.7 退役：编码位全归 GLM 5.3（UI 文件仍 Qwen） |
 | `v1.3.0` | 大文件路由（Kimi 常规 / GLM 大文件非UI / Qwen UI）+ 四模型 1M 预算（GLM 5.2→5.3） |
 | `v1.1.0` | 接入 Qwen3.8-Max：长任务编码位（准入三测通过） |
 | `v1.2.0` | 视觉/UI 全迁 Qwen3.8-Max（Kimi K3 视觉位退役，成本指令） |
