@@ -172,17 +172,45 @@ def phase1b_visual(project_dir, requirements, design, files):
 
 
 # ---------------------------------------------------------------- Phase 2
+# v1.3 文件路由（2026-08-19，博士拍板）：常规 → Kimi；UI 相关 → Qwen；大文件非UI → GLM
+LARGE_SIZE_BYTES = 30 * 1024     # 大文件阈值：>30KB
+LARGE_LINES = 1000               # 或 >1000 行
+UI_EXTS = ('.html', '.htm', '.css', '.svg', '.vue', '.jsx', '.tsx', '.mdx')
+
+
+def route_coder(project_dir, f):
+    # 确定性路由：返回 (provider, 显示名)
+    path = f['path'].lower()
+    is_ui = path.endswith(UI_EXTS)
+    full = safe_path(project_dir, f['path'])
+    is_large = False
+    if os.path.exists(full):
+        try:
+            size = os.path.getsize(full)
+            lines = read_text(full).count('\n')
+            is_large = size > LARGE_SIZE_BYTES or lines > LARGE_LINES
+        except OSError:
+            pass
+    if is_ui:
+        return 'qwen', 'Qwen3.8-Max（视觉位）'
+    if is_large:
+        return 'glm', 'GLM 5.3（大文件位）'
+    return 'kimi', 'Kimi K2.7 Code'
+
+
 def _write_one(project_dir, f, files_done):
     context = ''
     for d in f['deps']:
         full = safe_path(project_dir, d)
         if os.path.exists(full):
             context += f'\n\n【依赖文件 {d} 内容】\n{read_text(full)[:4000]}'
-    system = ('你是协同编码管线的代码编写者 Kimi coder。按规格编写该文件的完整代码。\n'
-              '规则：只输出完整代码，不要任何解释、不要 markdown 代码块围栏。')
+    provider, coder_name = route_coder(project_dir, f)
+    system = (f'你是协同编码管线的代码编写者 {coder_name}。按规格编写该文件的完整代码。\n'
+              '规则：只输出完整代码，不要任何解释、不要 markdown 代码块围栏。\n'
+              '若文件较大：必须完整输出全文，禁止省略、禁止以注释代替内容、禁止改写与任务无关的部分。')
     user = (f'文件路径：{f["path"]}\n\n规格：\n{f["spec"]}\n'
             f'{context}\n\n现在输出 {f["path"]} 的完整代码：')
-    r = ask('kimi', system, user, max_tokens=32768)
+    r = ask(provider, system, user, max_tokens=65536)
     if 'error' in r:
         return f['path'], None, r['error']
     full = safe_path(project_dir, f['path'])
@@ -197,7 +225,7 @@ def _write_one(project_dir, f, files_done):
 
 
 def phase2_code(project_dir, files):
-    banner(f'Phase 2/4 · Kimi coder 编写代码（{len(files)} 个文件）')
+    banner(f'Phase 2/4 · 路由编码（{len(files)} 个文件）· Kimi 常规 / GLM 大文件 / Qwen UI')
     written = {}
     i = 0
     while i < len(files):
@@ -209,7 +237,8 @@ def phase2_code(project_dir, files):
         i += 1
         if len(group) == 1:
             f = group[0]
-            sent(f'Kimi ← {f["path"]}')
+            provider, coder_name = route_coder(project_dir, f)
+            sent(f'{coder_name} ← {f["path"]}')
             path, full, res = _write_one(project_dir, f, written)
             if full:
                 print(f'✅ {path} 完成 ({res} chars)')
@@ -217,7 +246,8 @@ def phase2_code(project_dir, files):
             else:
                 print(f'❌ {path} 失败: {res}')
         else:
-            sent('Kimi ← ' + ' ∥ '.join(f['path'] for f in group) + '（并行）')
+            provs = {route_coder(project_dir, f)[1] for f in group}
+            sent(' ∥ '.join(sorted(provs)) + ' ← ' + ' ∥ '.join(f['path'] for f in group) + '（并行）')
             with ThreadPoolExecutor(max_workers=len(group)) as ex:
                 fut = {ex.submit(_write_one, project_dir, f, written): f for f in group}
                 for fu in as_completed(fut):
@@ -245,7 +275,7 @@ def phase3a_review_code(project_dir, files):
                   '「问题位置 + 问题说明 + 修改建议」。')
         user = f'文件：{f["path"]}\n\n规格：\n{f["spec"]}\n\n代码：\n{code[:16000]}'
         sent(f'GLM 审查 ← {f["path"]}')
-        r = ask('glm', system, user, max_tokens=8000)
+        r = ask('glm', system, user, max_tokens=65536)
         done('GLM 审查', r)
         report.append(f'\n## {f["path"]}\n' + (r.get('content') or r.get('error', '')))
         time.sleep(1)
@@ -301,7 +331,7 @@ def phase3b_review_visual(project_dir, files, visual_spec):
         user = f'文件：{f["path"]}\n\n视觉规格（节选）：\n{visual_spec[:4000]}\n\n' + \
                ('页面渲染截图见附件。' if imgs else '该文件为样式/资源文件，结合页面审查。')
         sent(f'Qwen 视觉审查 ← {f["path"]}')
-        r = ask('qwen', system, user, images=imgs if imgs else None, max_tokens=8000)
+        r = ask('qwen', system, user, images=imgs if imgs else None, max_tokens=65536)
         done('Qwen 视觉审查', r)
         report.append(f'\n## {f["path"]}\n' + (r.get('content') or r.get('error', '')))
         time.sleep(1)
@@ -335,7 +365,7 @@ def phase4_integrate(project_dir, files, review_code, review_visual, requirement
                       '输出修复后的完整文件内容，不要解释，不要 markdown 围栏。')
             user = f'文件：{path}\n\n当前内容：\n{read_text(full)[:12000]}\n\n审查发现的问题：\n' + '\n---\n'.join(issues)
             sent(f'DeepSeek 修复 ← {path}')
-            r = ask('deepseek', system, user, reasoning='high', max_tokens=32768)
+            r = ask('deepseek', system, user, reasoning='high', max_tokens=65536)
             done('DeepSeek 修复', r)
             if 'error' not in r:
                 before = read_text(full)
@@ -372,7 +402,7 @@ def phase4_integrate(project_dir, files, review_code, review_visual, requirement
             f'\n\n代码审查：\n{review_code[:4000]}\n\n视觉审查：\n{review_visual[:3000]}'
             f'\n\n已修复：{fixed}')
     sent(ROLE_NAME['deepseek'])
-    r = ask('deepseek', system, user, reasoning='high', max_tokens=16000)
+    r = ask('deepseek', system, user, reasoning='high', max_tokens=65536)
     done(ROLE_NAME['deepseek'], r)
     if 'error' not in r:
         with open(os.path.join(project_dir, ARTIFACTS, 'final_report.md'), 'w', encoding='utf-8') as fh:
