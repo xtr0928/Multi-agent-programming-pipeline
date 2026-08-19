@@ -3,7 +3,7 @@
 """协同编码管线（四模型分工，回归原始架构）
 
     DeepSeek V4 Pro  理解需求 · 编排 · 汇总修复 · 集成验证
-    GLM 5.3          设计整体情况（架构分析）+ 代码审查
+    GLM 5.3          设计整体情况（架构分析）+ 代码审查（新开独立实例）
     GLM 5.3          编写具体代码（逐文件，UI 文件由 Qwen 编写）
     Qwen3.8-Max      视觉与 UI 设计 + 视觉产出审查
 
@@ -248,19 +248,23 @@ def phase2_code(project_dir, files):
 
 # ---------------------------------------------------------------- Phase 3
 def phase3a_review_code(project_dir, files):
-    banner('Phase 3/4 · GLM 代码审查')
-    report = ['# 代码审查报告（GLM）\n']
+    banner('Phase 3/4 · GLM 代码审查（独立实例）')
+    report = ['# 代码审查报告（GLM 独立实例）\n']
+    req = read_text(os.path.join(project_dir, ARTIFACTS, 'requirement.md'))
     for f in files:
         full = safe_path(project_dir, f['path'])
         code = read_text(full)
         if not code:
             report.append(f'\n## {f["path"]}\n⚠️ 文件不存在或为空')
             continue
-        system = ('你是协同编码管线的代码审查者 GLM。对照规格审查代码（逻辑/安全/风格/遗漏）。\n'
+        system = ('你是本管线新开启的独立审查实例，与设计者、编码者互不相识，'
+                  '不承袭任何先前结论。以需求原文为最高基准、规格文档为对照，'
+                  '独立审查代码（逻辑/安全/风格/遗漏/规格偏差）。'
                   '输出第一行：✅ 通过 或 ⚠️ 需修改；若需修改，随后逐条列出'
                   '「问题位置 + 问题说明 + 修改建议」。')
-        user = f'文件：{f["path"]}\n\n规格：\n{f["spec"]}\n\n代码：\n{code[:16000]}'
-        sent(f'GLM 审查 ← {f["path"]}')
+        user = (f'需求原文：\n{req[:4000]}\n\n'
+                f'文件：{f["path"]}\n\n规格：\n{f["spec"]}\n\n代码：\n{code[:16000]}')
+        sent(f'GLM 独立审查 ← {f["path"]}')
         r = ask('glm', system, user, max_tokens=65536)
         done('GLM 审查', r)
         report.append(f'\n## {f["path"]}\n' + (r.get('content') or r.get('error', '')))
