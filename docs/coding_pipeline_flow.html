@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>协同编码管线 v1.3 设计稿 · 四模型 1M 上下文 · 大文件路由</title>
+<title>协同编码管线 · 详细架构图（v1.3）</title>
 <style>
 :root {
   --paper: #f7f3ea; --paper2: #efe8d8; --ink: #26221c; --ink-soft: #5a534a;
@@ -14,9 +14,9 @@
 body {
   background: var(--paper); color: var(--ink);
   font-family: "Noto Serif SC", "Source Han Serif SC", "STSong", serif;
-  padding: 36px 40px 48px; max-width: 1080px; margin: 0 auto;
+  padding: 34px 38px 46px; max-width: 1120px; margin: 0 auto;
 }
-.topbar { height: 6px; display: flex; margin-bottom: 26px; }
+.topbar { height: 6px; display: flex; margin-bottom: 24px; }
 .topbar span { flex: 1; }
 .topbar span:nth-child(1) { background: var(--c-ds); }
 .topbar span:nth-child(2) { background: var(--c-glm); }
@@ -24,164 +24,208 @@ body {
 .topbar span:nth-child(4) { background: var(--c-qwen); }
 .topbar span:nth-child(5) { background: var(--c-flow); }
 .topbar span:nth-child(6) { background: var(--ink-soft); }
-h1 { font-size: 26px; letter-spacing: 1px; }
-.sub { color: var(--ink-soft); font-size: 13px; margin: 6px 0 24px; }
-.sub em { color: var(--accent); font-style: normal; }
-h2 { font-size: 16px; margin: 28px 0 12px; padding-left: 10px; border-left: 3px solid var(--accent); }
+h1 { font-size: 25px; letter-spacing: 1px; }
+.sub { color: var(--ink-soft); font-size: 13px; margin: 5px 0 22px; }
+h2 { font-size: 15.5px; margin: 26px 0 10px; padding-left: 10px; border-left: 3px solid var(--accent); }
+.mono { font-family: "JetBrains Mono", "Cascadia Mono", monospace; }
 
-/* 模型总览四卡 */
-.models { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.model { background: #fffdf7; border: 1px solid var(--hairline); border-radius: 6px; padding: 12px 14px 10px; position: relative; }
-.model::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 6px 6px 0 0; }
-.model.ds::before { background: var(--c-ds); }
-.model.glm::before { background: var(--c-glm); }
-.model.kimi::before { background: var(--c-kimi); }
-.model.qwen::before { background: var(--c-qwen); }
-.model .mname { font-size: 15px; font-weight: 700; }
-.model .mtag { display: inline-block; font-size: 10.5px; color: #fff; border-radius: 3px; padding: 1px 6px; margin-top: 6px; }
-.model.ds .mtag { background: var(--c-ds); } .model.glm .mtag { background: var(--c-glm); }
-.model.kimi .mtag { background: var(--c-kimi); } .model.qwen .mtag { background: var(--c-qwen); }
-.model .mrole { font-size: 12.5px; color: var(--ink-soft); margin-top: 8px; line-height: 1.65; }
-.new { color: var(--accent); font-weight: 700; }
+/* 仓库结构 */
+.repo { display: flex; gap: 10px; font-size: 12px; }
+.repo .dir { flex: 1; background: #fffdf7; border: 1px solid var(--hairline); border-radius: 5px; padding: 9px 12px; }
+.repo .dir b { display: block; font-size: 12.5px; margin-bottom: 5px; }
+.repo .dir div { color: var(--ink-soft); line-height: 1.65; }
 
-/* 流程泳道 */
-.flow { margin-top: 4px; }
-.row { display: flex; align-items: stretch; gap: 10px; margin-bottom: 10px; }
-.stage { flex: 0 0 92px; display: flex; align-items: center; justify-content: center; flex-direction: column;
-  background: var(--paper2); border: 1px solid var(--hairline); border-radius: 6px; font-size: 12px; color: var(--ink-soft); }
-.stage b { font-size: 13.5px; color: var(--ink); }
-.node { flex: 1; background: #fffdf7; border: 1px solid var(--hairline); border-radius: 6px; padding: 10px 14px; position: relative; overflow: hidden; }
-.node::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-.node.ds::before { background: var(--c-ds); } .node.glm::before { background: var(--c-glm); }
-.node.kimi::before { background: var(--c-kimi); } .node.qwen::before { background: var(--c-qwen); }
-.node.flowc::before { background: var(--c-flow); }
-.node .nt { font-size: 14px; font-weight: 700; }
-.node .nd { font-size: 12px; color: var(--ink-soft); margin-top: 4px; line-height: 1.6; }
-.node .nd code { font-family: "JetBrains Mono", monospace; font-size: 11px; background: var(--paper2); padding: 0 3px; border-radius: 2px; }
-.par { display: flex; gap: 10px; }
-.arrow { text-align: center; color: var(--ink-soft); font-size: 13px; margin: -2px 0 6px; }
-.badge { display: inline-block; font-size: 10px; border: 1px solid var(--accent); color: var(--accent); border-radius: 3px; padding: 0 5px; margin-left: 6px; vertical-align: 1px; }
+/* 模型卡 */
+.models { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.model { background: #fffdf7; border: 1px solid var(--hairline); border-radius: 5px; padding: 10px 12px; position: relative; }
+.model::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 5px 5px 0 0; }
+.model.ds::before { background: var(--c-ds); } .model.glm::before { background: var(--c-glm); }
+.model.kimi::before { background: var(--c-kimi); } .model.qwen::before { background: var(--c-qwen); }
+.model .mn { font-size: 13.5px; font-weight: 700; }
+.model .mr { font-size: 11.5px; color: var(--ink-soft); margin-top: 6px; line-height: 1.6; }
+.model .mp { font-size: 10.5px; margin-top: 7px; color: var(--ink-soft); }
+.model .mp b { color: var(--ink); }
 
-/* 路由菱形 */
-.route { flex: 1.2; background: #fffdf7; border: 1.5px dashed var(--c-flow); border-radius: 6px; padding: 10px 14px; }
-.route .nt { font-size: 14px; font-weight: 700; color: var(--c-flow); }
-.route .nd { font-size: 12px; color: var(--ink-soft); margin-top: 6px; line-height: 1.8; }
-.route .nd b { color: var(--ink); }
+/* 流程 */
+.phase { display: flex; gap: 10px; margin-bottom: 9px; align-items: stretch; }
+.pstage { flex: 0 0 96px; display: flex; align-items: center; justify-content: center; flex-direction: column;
+  background: var(--paper2); border: 1px solid var(--hairline); border-radius: 5px; font-size: 11px; color: var(--ink-soft); text-align: center; }
+.pstage b { font-size: 12.5px; color: var(--ink); }
+.pnode { flex: 1; background: #fffdf7; border: 1px solid var(--hairline); border-radius: 5px; padding: 9px 13px; position: relative; }
+.pnode::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 5px 5px 0 0; }
+.pnode.ds::before { background: var(--c-ds); } .pnode.glm::before { background: var(--c-glm); }
+.pnode.kimi::before { background: var(--c-kimi); } .pnode.qwen::before { background: var(--c-qwen); }
+.pnode.flowc::before { background: var(--c-flow); }
+.pnode .nt { font-size: 13px; font-weight: 700; }
+.pnode .nd { font-size: 11.5px; color: var(--ink-soft); margin-top: 4px; line-height: 1.7; }
+.pnode .io { font-size: 11px; margin-top: 6px; padding-top: 5px; border-top: 1px dashed var(--hairline); }
+.io b { color: var(--ink); }
+.par { display: flex; gap: 10px; flex: 1; }
+.arrow { text-align: center; color: var(--ink-soft); font-size: 13px; margin: 0 0 7px; }
 
-/* 说明表 */
-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
-th, td { border: 1px solid var(--hairline); padding: 7px 10px; text-align: left; vertical-align: top; }
-th { background: var(--paper2); font-weight: 700; }
-td code { font-family: monospace; font-size: 11.5px; }
-.pending { color: var(--accent); }
-.foot { margin-top: 26px; font-size: 11.5px; color: var(--ink-soft); border-top: 1px dashed var(--hairline); padding-top: 10px; }
+/* 路由树 */
+.routewrap { background: #fffdf7; border: 1px solid var(--c-flow); border-radius: 6px; padding: 12px 16px; }
+.routewrap .rt { font-size: 13.5px; font-weight: 700; color: var(--c-flow); margin-bottom: 8px; }
+.tree { font-size: 12px; line-height: 2; }
+.tree .lv { padding-left: 26px; }
+.tree .lv2 { padding-left: 52px; color: var(--ink-soft); }
+.tree b.ds { color: var(--c-ds); } .tree b.glm { color: var(--c-glm); }
+.tree b.kimi { color: var(--c-kimi); } .tree b.qwen { color: var(--c-qwen); }
+
+/* 表格 */
+table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+th, td { border: 1px solid var(--hairline); padding: 6px 9px; text-align: left; vertical-align: top; }
+th { background: var(--paper2); }
+td .mono, .mono { font-size: 11px; }
+.foot { margin-top: 24px; font-size: 11px; color: var(--ink-soft); border-top: 1px dashed var(--hairline); padding-top: 9px; }
 </style>
 </head>
 <body>
 
 <div class="topbar"><span></span><span></span><span></span><span></span><span></span><span></span></div>
 
-<h1>协同编码管线 v1.3 设计稿</h1>
-<div class="sub">原始四模型分工 · 全部 1M 上下文 · <em>大文件编码路由更新</em>（2026-08-19 博士拍板，已实现）</div>
+<h1>协同编码管线 · 详细架构图</h1>
+<div class="sub">v1.3 · 原始四模型分工 · 一条简单流水线（无门禁/无阶梯/无仲裁）</div>
 
-<h2>模型分工总览（全部 1M 上下文）</h2>
+<h2>一、仓库结构</h2>
+<div class="repo">
+  <div class="dir"><b>pipeline/</b>
+    <div><span class="mono">coding_pipeline.py</span> — 编排主程序<br>
+    <span class="mono">llm_client.py</span> — 四模型调用封装<br>
+    <span class="mono">ARCHITECTURE.md</span> — 本架构说明</div>
+  </div>
+  <div class="dir"><b>docs/</b>
+    <div><span class="mono">coding_pipeline_flow.html/.png</span><br>执行阶段流程图（本图）</div>
+  </div>
+  <div class="dir"><b>skills/</b>
+    <div>multi-model-orchestration/<br>模型分工与编排经验</div>
+  </div>
+  <div class="dir"><b>demo/ + 项目目录</b>
+    <div>示例与产物：<br><span class="mono">pipeline_artifacts/</span> 下<br>需求/设计/视觉规格/审查/报告</div>
+  </div>
+</div>
+
+<h2>二、模型分工与调用参数</h2>
 <div class="models">
   <div class="model ds">
-    <div class="mname">DeepSeek V4 Pro</div><span class="mtag">1M 上下文</span>
-    <div class="mrole">理解需求 · 编排调度<br>汇总修复 · 集成验证</div>
+    <div class="mn">DeepSeek V4 Pro</div>
+    <div class="mr">理解需求 · 编排调度<br>汇总修复 · 集成验证</div>
+    <div class="mp">思考 <b>high</b> · max_tokens <b>65536</b></div>
   </div>
   <div class="model glm">
-    <div class="mname">GLM 5.3</div><span class="mtag">1M 上下文</span>
-    <div class="mrole">整体架构设计 · 代码审查<br><span class="new">+ 大文件编码位（UI 无关）</span></div>
+    <div class="mn">GLM 5.3</div>
+    <div class="mr">整体设计 · 代码审查<br>大文件编码位（UI 无关）</div>
+    <div class="mp">上下文 <b>1M</b> · 输出 <b>128K</b> · max_tokens <b>65536</b></div>
   </div>
   <div class="model kimi">
-    <div class="mname">Kimi K2.7 Code</div><span class="mtag">1M 上下文</span>
-    <div class="mrole">常规文件逐文件编码<br><span class="pending">（大文件移交 GLM）</span></div>
+    <div class="mn">Kimi K2.7 Code</div>
+    <div class="mr">常规文件编码<br>（上下文 256K，大活不接）</div>
+    <div class="mp">上下文 <b>256K</b> · max_tokens <b>65536</b></div>
   </div>
   <div class="model qwen">
-    <div class="mname">Qwen3.8-Max</div><span class="mtag">1M 上下文</span>
-    <div class="mrole">视觉与 UI 设计 · 截图视觉审查<br><span class="new">UI 文件编码（承接视觉规格）</span></div>
+    <div class="mn">Qwen3.8-Max</div>
+    <div class="mr">视觉与 UI 设计 · UI 文件编码<br>截图视觉审查</div>
+    <div class="mp">max_tokens <b>65536</b> · 图像直发</div>
   </div>
 </div>
 
-<h2>流水线（五阶段）</h2>
-<div class="flow">
+<h2>三、执行流水线（五阶段）</h2>
 
-  <div class="row">
-    <div class="stage"><b>Phase 0</b>理解需求</div>
-    <div class="node ds">
-      <div class="nt">DeepSeek 理解需求</div>
-      <div class="nd">结构化需求文档：目标 / 功能 / 边界 / 技术约束 / 交付物 / VISUAL 判定</div>
-    </div>
+<div class="phase">
+  <div class="pstage"><b>Phase 0</b>理解需求</div>
+  <div class="pnode ds">
+    <div class="nt">DeepSeek 理解需求</div>
+    <div class="nd">输入：<span class="mono">--requirement</span>（+ 可选 <span class="mono">--design-context</span> 硬约束注入）<br>
+    结构化需求：目标 / 功能 / 边界 / 技术约束 / 交付物清单 / VISUAL: yes|no 判定</div>
+    <div class="io"><b>输出</b> <span class="mono">pipeline_artifacts/requirement.md</span></div>
   </div>
+</div>
 
-  <div class="arrow">↓</div>
+<div class="arrow">↓</div>
 
-  <div class="row">
-    <div class="stage"><b>Phase 1</b>设计 ∥ 视觉</div>
-    <div class="par">
-      <div class="node glm">
-        <div class="nt">GLM 5.3 整体设计</div>
-        <div class="nd">文件清单 + 逐文件规格 + 接口 / 数据模型<br>（不写代码；<code>### FILE:</code> 依赖分组）</div>
-      </div>
-      <div class="node qwen">
-        <div class="nt">Qwen3.8-Max 视觉与 UI 设计</div>
-        <div class="nd">视觉规格文档：页面 / 组件 / 配色 / 图表规格<br>（仅当 VISUAL: yes 时启用）</div>
-      </div>
+<div class="phase">
+  <div class="pstage"><b>Phase 1</b>设计 ∥ 视觉</div>
+  <div class="par">
+    <div class="pnode glm">
+      <div class="nt">GLM 5.3 整体设计</div>
+      <div class="nd">文件清单（<span class="mono">### FILE:</span> 路径 + 依赖分组）+ 逐文件规格 + 接口 / 数据模型<br>只设计不写码；已有 <span class="mono">--design-context</span> 时不得重做选型</div>
+      <div class="io"><b>输出</b> <span class="mono">design.md</span>（文件清单解析为待编码列表）</div>
     </div>
-  </div>
-
-  <div class="arrow">↓</div>
-
-  <div class="row">
-    <div class="stage"><b>Phase 2</b>编码</div>
-    <div class="route">
-      <div class="nt">文件路由 ◇（v1.3 新增）</div>
-      <div class="nd">
-        ① <b>常规文件</b> → <b>Kimi</b> 逐文件编码（依赖分组内并行）<br>
-        ② <b>大文件（UI 无关，&gt;30KB / &gt;1000 行）</b> → <b class="new">GLM</b> 编码<span class="badge">新</span>（1M 上下文承接全文重写）<br>
-        ③ <b>大文件（UI 相关）</b> → <b>Qwen</b>（视觉位，对照 visual_spec）
-      </div>
-    </div>
-  </div>
-
-  <div class="arrow">↓</div>
-
-  <div class="row">
-    <div class="stage"><b>Phase 3</b>双审查</div>
-    <div class="par">
-      <div class="node glm">
-        <div class="nt">GLM 5.3 代码审查</div>
-        <div class="nd">逻辑 / 安全 / 规格一致性（.py/.js/.ts/.go 主审）<br>输出：✅ 通过 / ⚠️ 具体位置 + 修改建议</div>
-      </div>
-      <div class="node qwen">
-        <div class="nt">Qwen3.8-Max 视觉产出审查</div>
-        <div class="nd">启动服务 → 截图 → 对照 Phase 1b 视觉规格<br>（.html/.css/.svg/图片 主审）</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="arrow">↓</div>
-
-  <div class="row">
-    <div class="stage"><b>Phase 4</b>修复集成</div>
-    <div class="node ds">
-      <div class="nt">DeepSeek 汇总修复 · 集成验证</div>
-      <div class="nd">汇总双审查意见 → 逐文件应用修复 → 落盘核查（safe_path 边界 + 写后校验）→ 交付报告</div>
+    <div class="pnode qwen">
+      <div class="nt">Qwen3.8-Max 视觉与 UI 设计</div>
+      <div class="nd">页面 / 组件 / 配色 / 图表规格（仅 VISUAL: yes 时启用；纯后端跳过）</div>
+      <div class="io"><b>输出</b> <span class="mono">visual_spec.md</span></div>
     </div>
   </div>
 </div>
 
-<h2>v1.2 → v1.3 变更清单</h2>
+<div class="arrow">↓</div>
+
+<div class="phase">
+  <div class="pstage"><b>Phase 2</b>路由编码</div>
+  <div class="routewrap">
+    <div class="rt">route_coder() — 确定性三分流（按扩展名与现有文件大小，无 LLM 参与）</div>
+    <div class="tree">
+      <div>① 扩展名 ∈ {.html .css .svg .vue .jsx .tsx .mdx}？ ── 是 ──→ <b class="qwen">Qwen3.8-Max</b>（UI 文件，对照 visual_spec）</div>
+      <div class="lv">└─ 否：目标文件已存在且（&gt;30KB 或 &gt;1000 行）？ ── 是 ──→ <b class="glm">GLM 5.3</b>（大文件位）</div>
+      <div class="lv2">└─ 否（含尚不存在的新文件）──→ <b class="kimi">Kimi K2.7 Code</b>（常规位）</div>
+    </div>
+    <div class="nd" style="margin-top:8px;font-size:11.5px;color:var(--ink-soft)">
+      编码提示词强制：完整输出全文、禁止省略、禁止以注释代替内容、禁止改写与任务无关部分。
+      同依赖组文件并行派发（ThreadPool）；依赖文件内容（≤4K 字）注入上下文。</div>
+    <div class="io"><b>写入</b> <span class="mono">safe_path()</span> 定位 → 写后校验（回读非空）</div>
+  </div>
+</div>
+
+<div class="arrow">↓</div>
+
+<div class="phase">
+  <div class="pstage"><b>Phase 3</b>双审查</div>
+  <div class="par">
+    <div class="pnode glm">
+      <div class="nt">GLM 5.3 代码审查</div>
+      <div class="nd">逻辑 / 安全 / 规格一致性 / 风格（.py/.js/.ts/.go 等主审）</div>
+      <div class="io"><b>输出</b> <span class="mono">review_code.md</span>（✅ 通过 / ⚠️ 位置 + 修改建议）</div>
+    </div>
+    <div class="pnode qwen">
+      <div class="nt">Qwen3.8-Max 视觉产出审查</div>
+      <div class="nd">playwright 启动服务 → 截图（存 <span class="mono">.visual_tmp/</span>）→ base64 直发模型，对照 visual_spec 逐项核对布局 / 配色 / 可读性</div>
+      <div class="io"><b>输出</b> <span class="mono">review_visual.md</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow">↓</div>
+
+<div class="phase">
+  <div class="pstage"><b>Phase 4</b>修复集成</div>
+  <div class="pnode ds">
+    <div class="nt">DeepSeek 汇总修复 · 集成验证</div>
+    <div class="nd">汇总双审查意见 → 逐文件应用修复（同 safe_path + 写后校验）→ 交付物落盘核查（存在性 + 字节数，修复前后无变化即报「修复无效」）→ 最终报告</div>
+    <div class="io"><b>输出</b> 修复后的代码 + <span class="mono">final_report.md</span>（报告只能引用核查表事实）</div>
+  </div>
+</div>
+
+<h2>四、路径安全与落盘保障</h2>
 <table>
-  <tr><th>#</th><th>变更</th><th>说明</th></tr>
-  <tr><td>1</td><td class="new">大文件编码路由</td><td>UI 无关大文件移交 GLM（1M 上下文承接全文重写）；Kimi 只负责常规文件——修复 2026-08-18 实战「42KB 文件被 Kimi 重写截断 + 编造内容」缺陷</td></tr>
-  <tr><td>2</td><td class="new">四模型 1M 上下文</td><td>DS / GLM / Kimi / Qwen 调用 max_tokens 全部拉满（推理模型 reasoning 吃预算，小预算 content 返回空）</td></tr>
-  <tr><td>3</td><td>模型命名</td><td>GLM 5.2 → GLM 5.3（智谱已开通）</td></tr>
-  <tr><td>4</td><td class="new">已确认</td><td>大文件阈值 &gt;30KB 或 &gt;1000 行（按目标文件现有大小判定，新文件默认 Kimi）；UI 文件全部走 Qwen 视觉位</td></tr>
+  <tr><th>机制</th><th>规则</th></tr>
+  <tr><td><span class="mono">safe_path()</span></td><td>绝对路径（GLM 设计清单常给绝对路径）与相对路径统一归一 → 只允许落在 project_dir 之内，越界 / <span class="mono">../</span> 断言拦截。修复 2026-08-18「产物写入嵌套错误目录」缺陷</td></tr>
+  <tr><td>写后校验</td><td>每次写盘后回读验证非空，空文件当场报错</td></tr>
+  <tr><td>落盘核查</td><td>Phase 4 结束后逐文件核查存在 + 字节数，输出核查表注入最终报告——杜绝「报告声称完成、文件一字未动」</td></tr>
 </table>
 
-<div class="foot">铁律：编码架构禁掺数模机制（无门禁/阶梯/仲裁）。此稿仅改分工与路由，不动 Phase 结构。· 纸墨风 V2.2</div>
+<h2>五、产物目录</h2>
+<table>
+  <tr><th>文件</th><th>产出阶段</th><th>内容</th></tr>
+  <tr><td><span class="mono">requirement.md</span></td><td>Phase 0</td><td>结构化需求 + VISUAL 判定</td></tr>
+  <tr><td><span class="mono">design.md</span></td><td>Phase 1</td><td>文件清单 + 逐文件规格 + 接口 / 数据模型</td></tr>
+  <tr><td><span class="mono">visual_spec.md</span></td><td>Phase 1b</td><td>视觉规格（页面/组件/配色/图表）</td></tr>
+  <tr><td><span class="mono">review_code.md</span></td><td>Phase 3a</td><td>GLM 代码审查意见</td></tr>
+  <tr><td><span class="mono">review_visual.md</span></td><td>Phase 3b</td><td>Qwen 截图审查意见</td></tr>
+  <tr><td><span class="mono">final_report.md</span></td><td>Phase 4</td><td>修复汇总 + 落盘核查表</td></tr>
+</table>
+
+<div class="foot">铁律：这是编码架构，不是数模——原始四阶段流水线，无门禁、无校准阶梯、无仲裁。图干净，一条简单流程。</div>
 
 </body>
 </html>
